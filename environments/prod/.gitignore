@@ -1,0 +1,20 @@
+# Local Terraform directories
+.terraform/
+.terraform.lock.hcl
+
+# State files (should never be committed - they live in remote backend)
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Variables files that might contain sensitive data
+*.tfvars
+*.tfvars.json
+backend.hcl
+
+# CLI configuration
+.terraformrc
+terraform.rc
