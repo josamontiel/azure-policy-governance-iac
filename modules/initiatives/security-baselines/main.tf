@@ -1,9 +1,9 @@
 locals {
   # Built-in policy definition IDs. These are stable, Microsoft-published values.
-  builtin_required_tag_policy_id        = "/providers/Microsoft.Authorization/policyDefinitions/1e30110a-5ceb-460c-a204-c1c3969c6d62"
-  builtin_diagnostic_settings_policy_id = "/providers/Microsoft.Authorization/policyDefinitions/59759c62-9a22-4cdf-ae64-074495983fef"
+  builtin_required_tag_policy_id          = "/providers/Microsoft.Authorization/policyDefinitions/1e30110a-5ceb-460c-a204-c1c3969c6d62"
+  builtin_diagnostic_settings_policy_id   = "/providers/Microsoft.Authorization/policyDefinitions/59759c62-9a22-4cdf-ae64-074495983fef"
   builtin_public_network_access_policy_id = "/providers/Microsoft.Authorization/policyDefinitions/b2982f36-99f2-4db5-8eff-283140c09693"
-  builtin_allowed_locations_policy_id   = "/providers/Microsoft.Authorization/policyDefinitions/e56962a6-4747-49cd-b67b-bf8b01975c4c"
+  builtin_allowed_locations_policy_id     = "/providers/Microsoft.Authorization/policyDefinitions/e56962a6-4747-49cd-b67b-bf8b01975c4c"
 }
 
 resource "azurerm_policy_set_definition" "security_baselines" {
@@ -19,30 +19,37 @@ resource "azurerm_policy_set_definition" "security_baselines" {
   })
 
   # Initiative-level parameters that are passed through to underlying policies.
+  # Defaults match the values currently hardcoded in Azure, so the existing
+  # assignment continues to function during the transition. The assignment
+  # module will override these explicitly per environment.
   parameters = jsonencode({
     logAnalyticsWorkspaceId = {
-      type = "String"
+      type         = "String"
+      defaultValue = var.log_analytics_workspace_id
       metadata = {
         displayName = "Log Analytics Workspace ID"
         description = "Full resource ID of the workspace that diagnostic settings will forward to."
       }
     }
     allowedLocations = {
-      type = "Array"
+      type         = "Array"
+      defaultValue = var.allowed_locations
       metadata = {
         displayName = "Allowed Locations"
         description = "List of regions where resource deployment is permitted."
       }
     }
     requiredTagName = {
-      type = "String"
+      type         = "String"
+      defaultValue = var.required_tag_name
       metadata = {
         displayName = "Required Tag Name"
         description = "Tag key required on every resource."
       }
     }
     requiredTagValue = {
-      type = "String"
+      type         = "String"
+      defaultValue = var.required_tag_value
       metadata = {
         displayName = "Required Tag Value"
         description = "Tag value required for the required tag."
@@ -50,6 +57,7 @@ resource "azurerm_policy_set_definition" "security_baselines" {
     }
     diagnosticSettingsEffect = {
       type          = "String"
+      defaultValue  = var.diagnostic_settings_effect
       allowedValues = ["DeployIfNotExists", "AuditIfNotExists", "Disabled"]
       metadata = {
         displayName = "Diagnostic Settings Effect"
@@ -58,6 +66,7 @@ resource "azurerm_policy_set_definition" "security_baselines" {
     }
     publicNetworkAccessEffect = {
       type          = "String"
+      defaultValue  = var.public_network_access_effect
       allowedValues = ["Audit", "Deny", "Disabled"]
       metadata = {
         displayName = "Public Network Access Effect"
@@ -68,9 +77,9 @@ resource "azurerm_policy_set_definition" "security_baselines" {
 
   # Custom: Deny Shared Key Access (no parameters wired through)
   policy_definition_reference {
-    policy_definition_id         = var.shared_key_policy_id
-    reference_id                 = "Block Public Blob Storage_1"
-    parameter_values             = jsonencode({})
+    policy_definition_id = var.shared_key_policy_id
+    reference_id         = "Block Public Blob Storage_1"
+    parameter_values     = jsonencode({})
   }
 
   # Built-in: Require a tag and its value on resources
