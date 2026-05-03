@@ -1,0 +1,129 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'environments/**'
+      - 'modules/**'
+      - '.github/workflows/terraform-plan.yml'
+
+# Required permissions for OIDC token issuance and PR commenting
+permissions:
+  id-token: write       # request the OIDC token from GitHub
+  contents: read        # checkout the repo
+  pull-requests: write  # post the plan comment on the PR
+
+# Prevent concurrent runs on the same PR from racing each other
+concurrency:
+  group: terraform-plan-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  TF_VERSION: '1.9.5'
+  WORKING_DIR: environments/prod
+
+jobs:
+  terraform-plan:
+    name: Plan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform format check
+        id: fmt
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform fmt -check -recursive ../..
+        continue-on-error: true
+
+      - name: Terraform init
+        id: init
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          ARM_USE_OIDC: 'true'
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=rg-terraform-state" \
+            -backend-config="storage_account_name=${{ vars.STATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=prod.tfstate"
+
+      - name: Terraform validate
+        id: validate
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        id: plan
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          ARM_USE_OIDC: 'true'
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          TF_VAR_log_analytics_workspace_id: ${{ secrets.LOG_ANALYTICS_WORKSPACE_ID }}
+        run: |
+          terraform plan -no-color -input=false -out=tfplan
+        continue-on-error: true
+
+      - name: Post plan comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+          FMT_OUTCOME: ${{ steps.fmt.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+          PLAN_STDOUT: "${{ steps.plan.outputs.stdout }}"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fmt = process.env.FMT_OUTCOME;
+            const validate = process.env.VALIDATE_OUTCOME;
+            const plan = process.env.PLAN_OUTCOME;
+
+            const icon = (status) => status === 'success' ? '✅' : status === 'failure' ? '❌' : '⚠️';
+
+            const output = `### Terraform Plan Results
+
+            ${icon(fmt)} **Format:** \`${fmt}\`
+            ${icon(validate)} **Validate:** \`${validate}\`
+            ${icon(plan)} **Plan:** \`${plan}\`
+
+            <details><summary>Plan output</summary>
+
+            \`\`\`hcl
+            ${process.env.PLAN_STDOUT || '(plan output not captured — check the workflow run)'}
+            \`\`\`
+
+            </details>
+
+            *Workflow: \`${context.workflow}\` · Triggered by @${context.actor}*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Fail if plan failed
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
