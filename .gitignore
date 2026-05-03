@@ -1,0 +1,4 @@
+
+# Exported Azure resource JSONs - may contain subscription IDs, emails, etc.
+*.json
+!package*.json
