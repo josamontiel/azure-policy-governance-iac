@@ -4,13 +4,12 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 4.0"
+      version = "~> 4.20"
     }
   }
 
   backend "azurerm" {
     # Values supplied via -backend-config at init time
-    # Keeps storage account name and key out of source control
   }
 }
 

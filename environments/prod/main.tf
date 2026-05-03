@@ -12,3 +12,11 @@ module "policy_deny_shared_key_access" {
   management_group_id = local.management_group_id
   policy_name         = "3bf4d15f1bd944fc875ce789"
 }
+
+module "initiative_security_baselines" {
+  source = "../../modules/initiatives/security-baselines"
+
+  management_group_id        = local.management_group_id
+  shared_key_policy_id       = module.policy_deny_shared_key_access.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+}
