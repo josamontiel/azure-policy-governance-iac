@@ -20,3 +20,11 @@ module "initiative_security_baselines" {
   shared_key_policy_id       = module.policy_deny_shared_key_access.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
 }
+
+module "assignment_security_baselines" {
+  source = "../../modules/assignments/security-baselines"
+
+  management_group_id        = local.management_group_id
+  initiative_id              = "/providers/microsoft.management/managementgroups/mg-governance-lab-prod/providers/Microsoft.Authorization/policySetDefinitions/${module.initiative_security_baselines.name}"
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+}
