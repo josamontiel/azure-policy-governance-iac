@@ -9,7 +9,8 @@ terraform {
   }
 
   backend "azurerm" {
-    # Values supplied via -backend-config at init time
+    use_azuread_auth = true
+    # All other values supplied via -backend-config at init time
   }
 }
 
