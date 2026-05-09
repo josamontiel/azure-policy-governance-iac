@@ -20,13 +20,13 @@ module "initiative_security_baselines" {
   shared_key_policy_id       = module.policy_deny_shared_key_access.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
 }
-
 module "assignment_security_baselines" {
   source = "../../modules/assignments/security-baselines"
 
-  management_group_id        = local.management_group_id
-  initiative_id              = "/providers/microsoft.management/managementgroups/mg-governance-lab-prod/providers/Microsoft.Authorization/policySetDefinitions/${module.initiative_security_baselines.name}"
-  log_analytics_workspace_id = var.log_analytics_workspace_id
+  management_group_id          = local.management_group_id
+  initiative_id                = "/providers/microsoft.management/managementgroups/mg-governance-lab-prod/providers/Microsoft.Authorization/policySetDefinitions/${module.initiative_security_baselines.name}"
+  log_analytics_workspace_id   = var.log_analytics_workspace_id
+  public_network_access_effect = var.public_network_access_effect
 }
 locals {
   state_backend_storage_account_id = "/subscriptions/176786fd-12ee-42f9-bcaa-772f8c3602d6/resourceGroups/rg-terraform-state/providers/Microsoft.Storage/storageAccounts/sttfstategovlab20901"
