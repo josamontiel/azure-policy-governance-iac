@@ -1,5 +1,7 @@
 # Azure Policy Governance — Infrastructure as Code
 
+> **Lab status**: this Azure environment was decommissioned in May 2026 after the project completed. The repository, screenshots, results writeup, and operational documentation all remain as-is for portfolio reference.
+
 Terraform implementation of the governance baseline built and documented in [azure-policy-governance](https://github.com/josamontiel/azure-policy-governance).
 
 This repo is the engineering artifact. The companion repo is the story — screenshots, narrative, decisions. If you've landed here first, that one's worth reading next.
